@@ -1,0 +1,16 @@
+Feature,MeanAbsSHAP
+Reginol Node Positive,2.926292689498942
+N Stage_N3,1.8818457635469517
+Progesterone Status_Positive,1.3610112415105078
+Estrogen Status_Positive,1.2707567161628852
+Grade_Poorly differentiated; Grade III,1.1959482217297723
+Age,1.165492592474184
+Tumor Size,1.0563763196930045
+Regional Node Examined,0.961488665366532
+N Stage_N2,0.5694170961633185
+Grade_Well differentiated; Grade I,0.24833984808212625
+T Stage_T2,0.22320405029059712
+T Stage_T3,0.09159406798568143
+A Stage_Regional,0.07589334522639432
+T Stage_T4,0.05257956091999503
+Grade_Undifferentiated; anaplastic; Grade IV,0.0
