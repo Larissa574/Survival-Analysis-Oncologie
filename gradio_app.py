@@ -211,10 +211,23 @@ def main():
     service = RSFSurvivalService()
     app = build_interface(service)
     host = os.getenv("GRADIO_SERVER_NAME", "127.0.0.1")
-    port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
+    port_env = os.getenv("GRADIO_SERVER_PORT")
     share = os.getenv("GRADIO_SHARE", "false").lower() == "true"
 
-    app.launch(server_name=host, server_port=port, share=share)
+    if port_env:
+        app.launch(server_name=host, server_port=int(port_env), share=share)
+        return
+
+    # Default behavior: try common local ports before letting Gradio choose one.
+    for port in [7860, 7861, 7862, 7863, 7864, 7865]:
+        try:
+            app.launch(server_name=host, server_port=port, share=share)
+            return
+        except OSError as exc:
+            if "Cannot find empty port" not in str(exc):
+                raise
+
+    app.launch(server_name=host, share=share)
 
 
 if __name__ == "__main__":
