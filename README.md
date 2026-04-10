@@ -89,7 +89,7 @@ App available at `http://127.0.0.1:7860`
 
 ## Try the app
 
-🔗 [Try the app on Hugging Face Spaces](https://huggingface.co/spaces/larissa-data/breast-cancer-survival)
+🔗 [Try the app on Hugging Face Spaces](https://huggingface.co/spaces/invxh19/breast-cancer-survival)
 
 
 
