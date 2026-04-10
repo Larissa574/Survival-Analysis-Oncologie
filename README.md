@@ -1,81 +1,100 @@
-# breast-cancer-survival-analysis-seer
+# Breast Cancer Survival Analysis — SEER Dataset
 
-Projet de survival analysis sur le cancer du sein a partir du dataset SEER, avec prise en compte explicite de la censure et comparaison de plusieurs approches de modelisation.
+Survival analysis framework for breast cancer prognosis using machine learning.
+Comparison of four models with SHAP-based interpretability and a Gradio deployment interface.
 
-## Contexte
-
-L'objectif est de predire le risque dans le temps pour des patientes atteintes d'un cancer du sein.
-Ce probleme est formule en **survival analysis** (time-to-event) et non en classification binaire.
-
-Variables cibles:
-- `Survival Months` : duree observee
-- `Status` : evenement (`Dead` = 1, sinon censure = 0)
+---
 
 ## Dataset
+The dataset used in this project is publicly available on Kaggle:
+[SEER Breast Cancer Data](https://www.kaggle.com/datasets/reihanenamdari/breast-cancer)
 
-- Source: `seer_cancer.csv`
-- Population: patientes avec variables cliniques et tumorales
-- Type de donnees: numeriques + categorielles
-- Particularite: presence de censure (evenement non observe pour une partie des patientes)
+Download the CSV and rename it `seer_cancer.csv` before running the notebook.
 
-## Methodes
+- **Size:** 4,023 patients after preprocessing
+- **Target:** `Survival Months` (duration) + `Status` (event: Dead=1, Censored=0)
 
-Le notebook `survival_analysis.ipynb` inclut:
-- EDA et visualisations de survie (Kaplan-Meier)
-- Baseline clinique
-- Cox Proportional Hazards
-- Cox stratifie
-- Random Survival Forest (RSF)
-- Interpretation des predictions avec SHAP
 
-## Resultats
+---
 
-Metrique principale: **C-index**
+## Models
 
-Comparaison des principaux modeles:
-- RSF (valide): **C-index = 0.720**, **IBS = 0.054**
-- Cox sans stratification: **C-index = 0.723**, **IBS = 0.052** (mais hypothese PH violee)
-- Cox stratifie: **C-index = 0.696**
-- Baseline (T Stage): **C-index = 0.600**
+| Model | C-Index | IBS | Valid |
+|---|---|---|---|
+| Cox Naive — T Stage only (baseline) | 0.611 | 0.058 | ✓ |
+| Cox PH (stratified) | 0.700 | 0.065 | ✓ |
+| **Random Survival Forest ← selected** | **0.720** | **0.054** | **✓** |
+| Cox PH (no stratification) | 0.723 | 0.052 | ✗ PH violated |
 
-### Conclusion du modele retenu
+The RSF is selected as the primary model — best C-index among statistically valid models and compatible with SHAP interpretability.
 
-Parmi les modeles statistiquement valides, le RSF obtient le meilleur C-index (0.720) et une excellente calibration (IBS = 0.054). Le Cox sans stratification presente des metriques legerement superieures (C-index = 0.723, IBS = 0.052) mais viole l'hypothese des risques proportionnels pour 3 variables, il ne peut donc pas etre retenu comme modele principal.
+---
 
-Le RSF est retenu pour le deploiement en raison de son meilleur pouvoir discriminant parmi les modeles valides, de sa calibration excellente, et de sa compatibilite avec l'interpretabilite SHAP pour l'explication individuelle par patiente.
+## Key Results
 
-## Visualisations
+**5-year survival by subgroup (Kaplan-Meier):**
 
-### Courbe Kaplan-Meier
+- T Stage: T1 → 92.2% vs T4 → 72.0%
+- Grade: Grade I → 95.0% vs Grade IV → 62.7%
+- Estrogen Status: Positive → 89.9% vs Negative → 63.4%
 
-![Kaplan-Meier globale](images/kaplan_meier.png)
+**Top 3 SHAP predictors:**
 
-### Explication SHAP (RSF)
+1. Reginol Node Positive (MeanAbsSHAP = 2.92)
+2. N Stage N3 (MeanAbsSHAP = 1.88)
+3. Progesterone Status Positive (MeanAbsSHAP = 1.36)
 
-![SHAP summary RSF](images/shap_summary_rsf.png)
+---
 
-## Demo
+## Visualizations
 
-- Demo locale: `http://127.0.0.1:7860`
-- Demo en ligne: non disponible pour le moment (application pas encore deployee)
+### Kaplan-Meier — global survival curve
+![KM global](images/kaplan_meier.png)
 
-## Lancement local
+### Kaplan-Meier — by T Stage
+![KM T Stage](images/kaplan_meier_par_t_stage.png)
+
+### SHAP summary plot (RSF)
+![SHAP summary](images/shap_summary_rsf.png)
+
+### SHAP waterfall — individual patient
+![SHAP waterfall](images/shap_waterfall_rsf_patient0.png)
+
+---
+
+## Project Structure
+
+```
+Survival-Analysis-Oncologie/
+├── survival_analysis.ipynb    ← main notebook
+├── gradio_app.py              ← Gradio app (local + HF Spaces)
+├── requirements.txt
+├── seer_cancer.csv
+├── shap_global_importance_rsf.csv
+└── images/
+```
+
+---
+
+## Run Locally
 
 ```bash
 pip install -r requirements.txt
 python gradio_app.py
 ```
 
-## Deploiement rapide (Hugging Face Spaces)
+App available at `http://127.0.0.1:7860`
 
-1. Creer un Space Gradio.
-2. Ajouter ces fichiers:
-	- `gradio_app.py`
-	- `requirements.txt`
-	- `seer_cancer.csv`
-	- `images/`
-3. Lancer l'application.
+---
 
-## Note
+## Try the app
 
-Le formulaire Gradio est volontairement compact. Certaines variables non saisies sont initialisees automatiquement avec des valeurs de reference de la cohorte d'entrainement.
+🔗 [Try the app on Hugging Face Spaces](https://huggingface.co/spaces/larissa-data/breast-cancer-survival)
+
+
+
+---
+
+## Stack
+
+Python · Lifelines · Scikit-survival · SHAP · Gradio · Pandas · Matplotlib
