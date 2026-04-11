@@ -6,6 +6,7 @@ warnings.filterwarnings("ignore")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import shap
 from gradio import Blocks, Column, Dropdown, Markdown, Number, Plot, Row, Slider
 import gradio as gr
@@ -57,6 +58,7 @@ class RSFSurvivalService:
 
         self.choices = {
             "T Stage": sorted(self.df["T Stage"].dropna().astype(str).unique().tolist()),
+            "N Stage": sorted(self.df["N Stage"].dropna().astype(str).unique().tolist()),
             "Grade": sorted(self.df["Grade"].dropna().astype(str).unique().tolist()),
             "Estrogen Status": sorted(self.df["Estrogen Status"].dropna().astype(str).unique().tolist()),
             "Progesterone Status": sorted(self.df["Progesterone Status"].dropna().astype(str).unique().tolist()),
@@ -94,14 +96,25 @@ class RSFSurvivalService:
         )
         return X_train, X_test, y_train, y_test
 
-    def _prepare_one_patient(self, age, t_stage, grade, tumor_size, estrogen_status, progesterone_status):
+    def _prepare_one_patient(
+        self,
+        age,
+        tumor_size,
+        reginol_node_positive,
+        n_stage,
+        grade,
+        estrogen_status,
+        progesterone_status,
+        t_stage,
+        regional_node_examined,
+    ):
         patient = {
             "Age": float(age),
             "Tumor Size": float(tumor_size),
-            "Regional Node Examined": self.defaults_num["Regional Node Examined"],
-            "Reginol Node Positive": self.defaults_num["Reginol Node Positive"],
+            "Regional Node Examined": float(regional_node_examined),
+            "Reginol Node Positive": float(reginol_node_positive),
             "T Stage": str(t_stage),
-            "N Stage": str(self.defaults_num["N Stage"]),
+            "N Stage": str(n_stage),
             "Grade": str(grade),
             "A Stage": str(self.defaults_num["A Stage"]),
             "Estrogen Status": str(estrogen_status),
@@ -113,14 +126,28 @@ class RSFSurvivalService:
         patient_X = patient_X.reindex(columns=self.feature_columns, fill_value=0).astype(float)
         return patient_X
 
-    def predict(self, age, t_stage, grade, tumor_size, estrogen_status, progesterone_status):
+    def predict(
+        self,
+        age,
+        tumor_size,
+        reginol_node_positive,
+        n_stage,
+        grade,
+        estrogen_status,
+        progesterone_status,
+        t_stage,
+        regional_node_examined,
+    ):
         patient_X = self._prepare_one_patient(
             age=age,
-            t_stage=t_stage,
-            grade=grade,
             tumor_size=tumor_size,
+            reginol_node_positive=reginol_node_positive,
+            n_stage=n_stage,
+            grade=grade,
             estrogen_status=estrogen_status,
             progesterone_status=progesterone_status,
+            t_stage=t_stage,
+            regional_node_examined=regional_node_examined,
         )
 
         surv_fn = self.rsf.predict_survival_function(patient_X)[0]
@@ -134,14 +161,26 @@ class RSFSurvivalService:
         t_5y_eval = min(60, domain_max_int)
         risk_5y = float(1.0 - surv_fn(t_5y_eval))
 
-        fig_surv, ax = plt.subplots(figsize=(8, 4.5))
-        ax.plot(months, surv_prob, color="#0F766E", linewidth=2.5)
-        ax.set_title("Courbe de survie personnalisee (RSF)")
-        ax.set_xlabel("Temps (mois)")
-        ax.set_ylabel("Probabilite de survie")
-        ax.set_ylim(0, 1)
-        ax.grid(alpha=0.25)
-        plt.tight_layout()
+        fig_surv = go.Figure()
+        fig_surv.add_trace(
+            go.Scatter(
+                x=months,
+                y=surv_prob,
+                mode="lines",
+                name="Survival probability",
+                line={"color": "#0F766E", "width": 3},
+                hovertemplate="Month: %{x}<br>Survival probability: %{y:.3f}<extra></extra>",
+            )
+        )
+        fig_surv.update_layout(
+            title="Courbe de survie personnalisee (RSF)",
+            xaxis_title="Temps (mois)",
+            yaxis_title="Probabilite de survie",
+            yaxis={"range": [0, 1]},
+            template="simple_white",
+            hovermode="x",
+            margin={"l": 40, "r": 20, "t": 50, "b": 40},
+        )
 
         shap_values = self.shap_explainer(patient_X)
 
@@ -179,7 +218,11 @@ def build_interface(service: RSFSurvivalService):
             with Column(scale=1):
                 age = Slider(20, 95, value=60, step=1, label="Age")
                 tumor_size = Number(value=30, label="Taille tumeur")
-                t_stage = Dropdown(service.choices["T Stage"], value=service.choices["T Stage"][0], label="T Stage")
+                reginol_node_positive = Number(
+                    value=service.defaults_num["Reginol Node Positive"],
+                    label="Reginol Node Positive",
+                )
+                n_stage = Dropdown(service.choices["N Stage"], value=service.defaults_num["N Stage"], label="N Stage")
                 grade = Dropdown(service.choices["Grade"], value=service.choices["Grade"][0], label="Grade")
                 estrogen = Dropdown(
                     service.choices["Estrogen Status"],
@@ -191,16 +234,31 @@ def build_interface(service: RSFSurvivalService):
                     value=service.choices["Progesterone Status"][0],
                     label="Progesterone Status",
                 )
+                t_stage = Dropdown(service.choices["T Stage"], value=service.choices["T Stage"][0], label="T Stage")
+                regional_node_examined = Number(
+                    value=service.defaults_num["Regional Node Examined"],
+                    label="Regional Node Examined",
+                )
                 run_btn = gr.Button("Predire", variant="primary")
 
             with Column(scale=2):
-                out_curve = Plot(label="Output 1 - Courbe de survie personnalisee")
+                out_curve = Plot(label="Output 1 - Courbe de survie personnalisee (interactive)")
                 out_risk = Markdown(label="Output 2 - Score de risque a 5 ans")
                 out_shap = Plot(label="Output 3 - SHAP explicatif")
 
         run_btn.click(
             fn=service.predict,
-            inputs=[age, t_stage, grade, tumor_size, estrogen, progesterone],
+            inputs=[
+                age,
+                tumor_size,
+                reginol_node_positive,
+                n_stage,
+                grade,
+                estrogen,
+                progesterone,
+                t_stage,
+                regional_node_examined,
+            ],
             outputs=[out_curve, out_risk, out_shap],
         )
 

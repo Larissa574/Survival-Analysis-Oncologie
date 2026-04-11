@@ -97,4 +97,4 @@ App available at `http://127.0.0.1:7860`
 
 ## Stack
 
-Python · Lifelines · Scikit-survival · SHAP · Gradio · Pandas · Matplotlib
+Python · Lifelines · Scikit-survival · SHAP · Gradio · Pandas · Matplotlib · Plotly
